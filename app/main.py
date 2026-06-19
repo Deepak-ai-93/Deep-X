@@ -9,7 +9,7 @@ from app.config import settings
 from mcp_server.server import list_tools, call_tool
 from middleware.auth import authenticate_request
 from middleware.rate_limit import check_rate_limit
-from payments.x402 import get_tool_price, deduct_balance, get_balance, get_pricing_with_balance, add_credits
+from payments.x402 import get_tool_price, deduct_balance, get_balance, get_pricing_with_balance, add_credits, get_transactions, get_all_balances
 from storage.models import init_db
 
 logging.basicConfig(
@@ -97,7 +97,7 @@ async def mcp_endpoint(request: Request, x_x402_token: str = Header(None, alias=
 
         price = get_tool_price(name)
 
-        if not deduct_balance(user_id, price):
+        if not deduct_balance(user_id, price, tool=name):
             if settings.x402_enabled:
                 return JSONResponse(
                     status_code=402,
@@ -141,10 +141,27 @@ async def x402_balance(request: Request):
 
 
 @app.post("/x402/credits")
-async def x402_add_credits(request: Request, amount: float = 0.1):
-    user_id = request.client.host if request.client else "anonymous"
-    add_credits(user_id, amount)
+async def x402_add_credits(request: Request, amount: float = 0.1, user: str = ""):
+    user_id = user or (request.client.host if request.client else "anonymous")
+    add_credits(user_id, amount, note="admin top-up")
     return {"balance": get_balance(user_id), "added": amount}
+
+
+@app.get("/admin/wallets")
+async def admin_wallets():
+    return {
+        "total_users": len(get_all_balances()),
+        "total_credits": round(sum(get_all_balances().values()), 4),
+        "wallets": get_all_balances(),
+    }
+
+
+@app.get("/admin/transactions")
+async def admin_transactions(user: str = "", limit: int = 50):
+    return {
+        "transactions": get_transactions(user_id=user or None, limit=limit),
+        "count": len(get_transactions(user_id=user or None, limit=limit)),
+    }
 
 
 if __name__ == "__main__":

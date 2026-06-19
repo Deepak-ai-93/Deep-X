@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 from app.config import settings
 
@@ -15,9 +16,10 @@ PRICING: dict[str, float] = {
     "generate_content_pack": 0.03,
 }
 
-INITIAL_CREDITS: float = 1.00
+INITIAL_CREDITS: float = 0.0
 
 _balances: dict[str, float] = {}
+_transactions: list[dict] = []
 
 
 def get_tool_price(tool_name: str) -> float:
@@ -30,17 +32,44 @@ def get_balance(user_id: str) -> float:
     return round(_balances[user_id], 4)
 
 
-def deduct_balance(user_id: str, amount: float) -> bool:
+def deduct_balance(user_id: str, amount: float, tool: str = "") -> bool:
     bal = get_balance(user_id)
     if bal < amount:
         return False
     _balances[user_id] = round(bal - amount, 4)
+    _transactions.append({
+        "type": "debit",
+        "user_id": user_id,
+        "amount": amount,
+        "tool": tool,
+        "balance_after": _balances[user_id],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
     return True
 
 
-def add_credits(user_id: str, amount: float):
+def add_credits(user_id: str, amount: float, note: str = ""):
     bal = get_balance(user_id)
     _balances[user_id] = round(bal + amount, 4)
+    _transactions.append({
+        "type": "credit",
+        "user_id": user_id,
+        "amount": amount,
+        "note": note,
+        "balance_after": _balances[user_id],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+def get_transactions(user_id: Optional[str] = None, limit: int = 50) -> list[dict]:
+    txns = _transactions
+    if user_id:
+        txns = [t for t in txns if t["user_id"] == user_id]
+    return list(reversed(txns))[:limit]
+
+
+def get_all_balances() -> dict[str, float]:
+    return dict(sorted(_balances.items(), key=lambda x: x[1], reverse=True))
 
 
 def verify_x402_token(token: str, expected_amount: float) -> bool:
