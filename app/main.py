@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Viral Content MCP server")
-    init_db(settings.database_url)
+    await init_db(settings.database_url)
     yield
     logger.info("Shutting down Viral Content MCP server")
 

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
 from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.ext.asyncio import create_async_engine
 
 
 class Base(DeclarativeBase):
@@ -47,7 +48,8 @@ class UsageLog(Base):
     user = relationship("User", back_populates="usage_logs")
 
 
-def init_db(db_url: str):
-    engine = create_engine(db_url, echo=False)
-    Base.metadata.create_all(engine)
+async def init_db(db_url: str):
+    engine = create_async_engine(db_url, echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     return engine
