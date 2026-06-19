@@ -3,6 +3,11 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
+    openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
     database_url: str = "sqlite+aiosqlite:///./viral_content.db"
 
     x402_secret: Optional[str] = None
