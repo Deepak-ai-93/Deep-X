@@ -20,7 +20,7 @@ PRICING: dict[str, float] = {
 
 INITIAL_CREDITS: float = 0.0
 
-DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "x402_data.json")
+DATA_FILE = os.path.abspath(os.path.join(os.getcwd(), "x402_data.json"))
 _lock = threading.Lock()
 
 _balances: dict[str, float] = {}
@@ -34,13 +34,16 @@ def _load():
         return
     _loaded = True
     try:
-        path = os.path.abspath(DATA_FILE)
+        path = DATA_FILE
+        logger.info("x402 data file path: %s", path)
         if os.path.exists(path):
             with open(path, "r") as f:
                 data = json.load(f)
                 _balances = data.get("balances", {})
                 _transactions = data.get("transactions", [])
-            logger.info("Loaded x402 data: %d users, %d txns", len(_balances), len(_transactions))
+            logger.info("Loaded x402 data: %d users, %d txns from %s", len(_balances), len(_transactions), path)
+        else:
+            logger.info("No existing x402 data file at %s, starting fresh", path)
     except Exception as e:
         logger.warning("Failed to load x402 data: %s", e)
 

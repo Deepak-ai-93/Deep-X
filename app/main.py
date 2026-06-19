@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -183,7 +184,29 @@ async def admin_transactions(user: str = "", limit: int = 50):
     }
 
 
+@app.get("/admin/debug")
+async def admin_debug():
+    import os
+    from payments.x402 import DATA_FILE
+    path = DATA_FILE
+    exists = os.path.exists(path)
+    content = None
+    if exists:
+        try:
+            with open(path) as f:
+                content = json.load(f)
+        except Exception as e:
+            content = {"error": str(e)}
+    return {
+        "data_file_path": path,
+        "data_file_exists": exists,
+        "cwd": os.getcwd(),
+        "content": content,
+    }
+
+
 if __name__ == "__main__":
+    import json
     import uvicorn
     uvicorn.run(
         "app.main:app",
