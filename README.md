@@ -251,12 +251,24 @@ Usage-based payment system. Each tool call deducts from the user's wallet balanc
 | `improve_content` | $0.005 |
 | `generate_content_pack` | $0.03 |
 
+### User Identification
+
+Pass the `X-x402-User` header to identify different users. Without this header, all requests from the same IP share one wallet.
+
+```bash
+# Check balance as user "abc"
+curl -H "X-x402-User: abc" https://viral-content-mcp.onrender.com/x402/balance
+
+# Make a tool call as user "abc"
+curl -H "X-x402-User: abc" -X POST ... /mcp
+```
+
 ### User Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/x402/balance` | Check your wallet balance, pricing table, and initial credits |
-| `POST` | `/x402/credits?amount=0.5` | Add credits to your wallet |
+| `POST` | `/x402/credits?amount=0.5&user=abc` | Add credits to a user's wallet (admin) |
 
 Every tool call response includes headers:
 - `X-x402-Cost` — amount deducted from wallet

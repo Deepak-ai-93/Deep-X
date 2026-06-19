@@ -22,6 +22,12 @@ logging.getLogger("mcp").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+def _get_user(request: Request, x_x402_user: str = "") -> str:
+    if x_x402_user:
+        return x_x402_user
+    return request.client.host if request.client else "anonymous"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Viral Content MCP server")
@@ -65,7 +71,11 @@ async def health():
 
 
 @app.post("/mcp")
-async def mcp_endpoint(request: Request, x_x402_token: str = Header(None, alias="X-x402-Token")):
+async def mcp_endpoint(
+    request: Request,
+    x_x402_token: str = Header(None, alias="X-x402-Token"),
+    x_x402_user: str = Header("", alias="X-x402-User"),
+):
     try:
         body = await request.json()
     except Exception:
@@ -86,7 +96,7 @@ async def mcp_endpoint(request: Request, x_x402_token: str = Header(None, alias=
     if method == "tools/call":
         name = params.get("name")
         arguments = params.get("arguments", {})
-        user_id = request.client.host if request.client else "anonymous"
+        user_id = _get_user(request, x_x402_user)
 
         rate_ok, retry = check_rate_limit(user_id)
         if not rate_ok:
@@ -135,14 +145,22 @@ async def pricing():
 
 
 @app.get("/x402/balance")
-async def x402_balance(request: Request):
-    user_id = request.client.host if request.client else "anonymous"
+async def x402_balance(
+    request: Request,
+    x_x402_user: str = Header("", alias="X-x402-User"),
+):
+    user_id = _get_user(request, x_x402_user)
     return get_pricing_with_balance(user_id)
 
 
 @app.post("/x402/credits")
-async def x402_add_credits(request: Request, amount: float = 0.1, user: str = ""):
-    user_id = user or (request.client.host if request.client else "anonymous")
+async def x402_add_credits(
+    request: Request,
+    amount: float = 0.1,
+    user: str = "",
+    x_x402_user: str = Header("", alias="X-x402-User"),
+):
+    user_id = user or x_x402_user or (request.client.host if request.client else "anonymous")
     add_credits(user_id, amount, note="admin top-up")
     return {"balance": get_balance(user_id), "added": amount}
 
