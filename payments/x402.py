@@ -97,6 +97,16 @@ def deduct_balance(user_id: str, amount: float, tool: str = "") -> bool:
             _balances[user_id] = INITIAL_CREDITS
         bal = _balances[user_id]
         if bal < amount:
+            _transactions.append({
+                "type": "failed_debit",
+                "user_id": user_id,
+                "amount": amount,
+                "tool": tool,
+                "client": _user_clients.get(user_id, ""),
+                "balance": bal,
+                "reason": "insufficient_balance",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
             _save()
             return False
         _balances[user_id] = round(bal - amount, 4)
@@ -153,6 +163,27 @@ def get_all_users() -> list[dict]:
         })
     users.sort(key=lambda u: u["balance"], reverse=True)
     return users
+
+
+def get_total_revenue() -> dict:
+    _load()
+    total_collected = 0.0
+    paid_calls = 0
+    total_credits_added = 0.0
+    for txn in _transactions:
+        if txn["type"] == "debit":
+            total_collected += txn["amount"]
+            paid_calls += 1
+        elif txn["type"] == "credit":
+            total_credits_added += txn["amount"]
+    outstanding_balance = round(sum(_balances.values()), 4)
+    return {
+        "total_collected": round(total_collected, 4),
+        "paid_calls": paid_calls,
+        "total_credits_added": round(total_credits_added, 4),
+        "outstanding_user_balances": outstanding_balance,
+        "total_users": len(_balances),
+    }
 
 
 def verify_x402_token(token: str, expected_amount: float) -> bool:

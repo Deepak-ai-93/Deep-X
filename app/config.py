@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./viral_content.db"
 
     x402_secret: Optional[str] = None
-    x402_enabled: bool = False
+    x402_enabled: bool = True
 
     api_key_header: str = "X-API-Key"
     rate_limit_requests: int = 60

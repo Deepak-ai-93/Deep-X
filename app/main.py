@@ -13,6 +13,7 @@ from middleware.rate_limit import check_rate_limit
 from payments.x402 import (
     get_tool_price, deduct_balance, get_balance, get_pricing_with_balance,
     add_credits, get_transactions, get_all_balances, get_all_users, ensure_user,
+    get_total_revenue,
 )
 from storage.models import init_db
 
@@ -187,6 +188,11 @@ async def admin_transactions(user: str = "", limit: int = 50):
         "transactions": get_transactions(user_id=user or None, limit=limit),
         "count": len(get_transactions(user_id=user or None, limit=limit)),
     }
+
+
+@app.get("/admin/revenue")
+async def admin_revenue():
+    return get_total_revenue()
 
 
 @app.get("/admin/debug")
