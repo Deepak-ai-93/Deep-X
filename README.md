@@ -1,6 +1,6 @@
 # Viral Content MCP
 
-A production-ready MCP (Model Context Protocol) server that generates and analyzes social media content. Works with any MCP-compatible LLM client (Claude, Gemini, Cursor, Windsurf, Continue, Cline, etc.).
+A production-ready MCP (Model Context Protocol) server that generates and analyzes social media content. Works with any MCP-compatible LLM client — no API keys required.
 
 ## Features
 
@@ -14,9 +14,135 @@ A production-ready MCP (Model Context Protocol) server that generates and analyz
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your API keys
 uvicorn app.main:app --host 0.0.0.0 --port 10000
+```
+
+No API keys, no .env file needed. The server works out of the box.
+
+## Connecting MCP Clients
+
+### Claude Code (Claude CLI)
+
+Add to your `~/.claude.json` or `claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "viral-content": {
+      "command": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "10000"]
+    }
+  }
+}
+```
+
+Or connect to a remote instance:
+
+```json
+{
+  "mcpServers": {
+    "viral-content": {
+      "url": "https://your-app.onrender.com/mcp"
+    }
+  }
+}
+```
+
+Then ask Claude:
+> *"Create a LinkedIn post about AI agents for SaaS founders"*
+> *"Write an X thread about MCP servers"*
+> *"Analyze this post for virality: [paste content]"*
+
+### Gemini CLI
+
+Add to your Gemini CLI config:
+
+```json
+{
+  "mcp": {
+    "servers": [
+      {
+        "name": "viral-content",
+        "url": "http://127.0.0.1:10000/mcp"
+      }
+    ]
+  }
+}
+```
+
+### Cursor
+
+In Cursor Settings → MCP Servers → Add Server:
+
+```
+Name: viral-content
+Type: command
+Command: uvicorn app.main:app --host 127.0.0.1 --port 10000
+```
+
+Then in Cursor chat:
+> *"Use the viral-content tools to write a LinkedIn post about remote work"*
+
+### Windsurf
+
+In Windsurf → Settings → MCP Servers:
+
+```json
+{
+  "mcpServers": {
+    "viral-content": {
+      "command": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "10000"]
+    }
+  }
+}
+```
+
+### Continue (VS Code)
+
+In `~/.continue/config.json`:
+
+```json
+{
+  "experimental": {
+    "mcpServers": {
+      "viral-content": {
+        "command": "uvicorn",
+        "args": ["app.main:app", "--host", "127.0.0.1", "--port", "10000"]
+      }
+    }
+  }
+}
+```
+
+### Cline (VS Code)
+
+In Cline → MCP Servers → Add:
+
+```
+Name: viral-content
+Command: uvicorn app.main:app --host 127.0.0.1 --port 10000
+```
+
+### Generic MCP Client
+
+Any MCP-compatible client can connect via stdio:
+
+```json
+{
+  "mcpServers": {
+    "viral-content": {
+      "command": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "10000"]
+    }
+  }
+}
+```
+
+Or via HTTP (if deployed):
+
+```
+URL: https://your-app.onrender.com/mcp
 ```
 
 ## MCP Tools
@@ -121,6 +247,18 @@ LLM Client → MCP Server → Content Generator
 ```bash
 docker build -t viral-content-mcp .
 docker run -p 10000:10000 --env-file .env viral-content-mcp
+```
+
+## Running as a Background Service
+
+For local CLI usage (Claude Code, Gemini CLI), run the server in the background:
+
+```bash
+# Start server in background
+nohup uvicorn app.main:app --host 127.0.0.1 --port 10000 &
+
+# Or use tmux/screen
+tmux new-session -d -s mcp 'uvicorn app.main:app --host 127.0.0.1 --port 10000'
 ```
 
 ## Testing
