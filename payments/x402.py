@@ -25,11 +25,12 @@ _lock = threading.Lock()
 
 _balances: dict[str, float] = {}
 _transactions: list[dict] = []
+_user_clients: dict[str, str] = {}
 _loaded = False
 
 
 def _load():
-    global _loaded, _balances, _transactions
+    global _loaded, _balances, _transactions, _user_clients
     if _loaded:
         return
     _loaded = True
@@ -41,7 +42,11 @@ def _load():
                 data = json.load(f)
                 _balances = data.get("balances", {})
                 _transactions = data.get("transactions", [])
-            logger.info("Loaded x402 data: %d users, %d txns from %s", len(_balances), len(_transactions), path)
+                _user_clients = data.get("user_clients", {})
+            logger.info(
+                "Loaded x402 data: %d users, %d txns from %s",
+                len(_balances), len(_transactions), path,
+            )
         else:
             logger.info("No existing x402 data file at %s, starting fresh", path)
     except Exception as e:
@@ -50,9 +55,13 @@ def _load():
 
 def _save():
     try:
-        path = os.path.abspath(DATA_FILE)
+        path = DATA_FILE
         with open(path, "w") as f:
-            json.dump({"balances": _balances, "transactions": _transactions}, f, indent=2)
+            json.dump({
+                "balances": _balances,
+                "transactions": _transactions,
+                "user_clients": _user_clients,
+            }, f, indent=2)
     except Exception as e:
         logger.error("Failed to save x402 data: %s", e)
 
@@ -70,11 +79,14 @@ def get_balance(user_id: str) -> float:
         return round(_balances[user_id], 4)
 
 
-def ensure_user(user_id: str):
+def ensure_user(user_id: str, client: str = ""):
     _load()
     with _lock:
         if user_id not in _balances:
             _balances[user_id] = INITIAL_CREDITS
+            _save()
+        if client and _user_clients.get(user_id) != client:
+            _user_clients[user_id] = client
             _save()
 
 
@@ -93,6 +105,7 @@ def deduct_balance(user_id: str, amount: float, tool: str = "") -> bool:
             "user_id": user_id,
             "amount": amount,
             "tool": tool,
+            "client": _user_clients.get(user_id, ""),
             "balance_after": _balances[user_id],
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
@@ -127,6 +140,19 @@ def get_transactions(user_id: Optional[str] = None, limit: int = 50) -> list[dic
 def get_all_balances() -> dict[str, float]:
     _load()
     return dict(sorted(_balances.items(), key=lambda x: x[1], reverse=True))
+
+
+def get_all_users() -> list[dict]:
+    _load()
+    users = []
+    for uid in _balances:
+        users.append({
+            "user_id": uid,
+            "balance": _balances[uid],
+            "client": _user_clients.get(uid, ""),
+        })
+    users.sort(key=lambda u: u["balance"], reverse=True)
+    return users
 
 
 def verify_x402_token(token: str, expected_amount: float) -> bool:
@@ -167,4 +193,5 @@ def get_pricing_with_balance(user_id: str) -> dict:
         "balance": get_balance(user_id),
         "pricing": PRICING,
         "initial_credits": INITIAL_CREDITS,
+        "client": _user_clients.get(user_id, ""),
     }

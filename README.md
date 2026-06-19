@@ -255,12 +255,16 @@ Usage-based payment system. Each tool call deducts from the user's wallet balanc
 
 Pass the `X-x402-User` header to identify different users. Without this header, all requests from the same IP share one wallet.
 
-```bash
-# Check balance as user "abc"
-curl -H "X-x402-User: abc" https://viral-content-mcp.onrender.com/x402/balance
+Pass `X-x402-Client` to track which LLM client is being used (e.g. `claude-code`, `gemini-cli`, `cursor`, `windsurf`).
 
-# Make a tool call as user "abc"
-curl -H "X-x402-User: abc" -X POST ... /mcp
+```bash
+# Check balance as user "abc" using Claude Code
+curl -H "X-x402-User: abc" -H "X-x402-Client: claude-code" \
+  https://viral-content-mcp.onrender.com/x402/balance
+
+# Make a tool call as user "abc" using Gemini CLI
+curl -H "X-x402-User: abc" -H "X-x402-Client: gemini-cli" \
+  -X POST ... /mcp
 ```
 
 ### User Endpoints
@@ -278,8 +282,22 @@ Every tool call response includes headers:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/admin/wallets` | View all wallets (total users, total credits, per-user balances) |
-| `GET` | `/admin/transactions?user=abc&limit=50` | View full transaction history (debits, credits, timestamps, tool names, balance snapshots) |
+| `GET` | `/admin/wallets` | View all wallets with balances, clients, per-user breakdown |
+| `GET` | `/admin/transactions?user=abc&limit=50` | View full transaction history (debits, credits, timestamps, tool, client, balance) |
+| `GET` | `/admin/debug` | Debug info (data file path, existence, CWD, raw content) |
+
+Example wallet output:
+```json
+{
+  "total_users": 3,
+  "total_credits": 0.86,
+  "users": [
+    {"user_id": "alice", "balance": 0.28, "client": "claude-code"},
+    {"user_id": "bob",   "balance": 0.29, "client": "gemini-cli"},
+    {"user_id": "carol", "balance": 0.29, "client": "cursor"}
+  ]
+}
+```
 
 ### Payment Flow
 
