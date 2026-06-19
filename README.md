@@ -239,26 +239,68 @@ Use these prompts with any MCP client (Claude Code, Cursor, Continue, etc.):
 
 ## x402 Payment System
 
-Every user starts with **$1.00 free credits**. Each tool call deducts from your balance.
+Usage-based payment system. Each tool call deducts from the user's wallet balance.
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /x402/balance` | Check your balance, pricing, and initial credits |
-| `POST /x402/credits?amount=0.5` | Add credits to your balance |
+### Pricing
 
-Tool calls include response headers:
-- `X-x402-Cost` — amount deducted
-- `X-x402-Balance` — remaining balance
+| Tool | Cost |
+|------|------|
+| `generate_linkedin_post` | $0.01 |
+| `generate_x_content` | $0.01 |
+| `analyze_content` | $0.005 |
+| `improve_content` | $0.005 |
+| `generate_content_pack` | $0.03 |
 
-When `X402_ENABLED=true` and balance is insufficient, the server returns **HTTP 402 Payment Required**.
+### User Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/x402/balance` | Check your wallet balance, pricing table, and initial credits |
+| `POST` | `/x402/credits?amount=0.5` | Add credits to your wallet |
+
+Every tool call response includes headers:
+- `X-x402-Cost` — amount deducted from wallet
+- `X-x402-Balance` — remaining wallet balance
+
+### Admin Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/admin/wallets` | View all wallets (total users, total credits, per-user balances) |
+| `GET` | `/admin/transactions?user=abc&limit=50` | View full transaction history (debits, credits, timestamps, tool names, balance snapshots) |
+
+### Payment Flow
+
+1. User starts with **$0.00 balance** (no free credits)
+2. Admin adds credits via `POST /x402/credits?amount=X&user=USER_ID`
+3. Each MCP tool call deducts the cost from the user's balance
+4. When `X402_ENABLED=true` and balance is insufficient → **HTTP 402 Payment Required**
+5. When `X402_ENABLED=false` (default) → tool call proceeds even with $0 balance (free mode with monitoring)
+
+### Example
+
+```bash
+# Admin: check all wallets
+curl https://viral-content-mcp.onrender.com/admin/wallets
+
+# Admin: add credits to a user
+curl -X POST "https://viral-content-mcp.onrender.com/x402/credits?amount=1.00&user=user123"
+
+# Admin: view transactions
+curl "https://viral-content-mcp.onrender.com/admin/transactions?limit=20"
+```
 
 ## API
 
-- `GET /health` - Health check
-- `GET /pricing` - Tool pricing
-- `POST /mcp` - MCP endpoint (tools/list, tools/call)
-- `GET /x402/balance` - Balance and pricing
-- `POST /x402/credits` - Add credits
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/pricing` | Tool pricing table |
+| `POST` | `/mcp` | MCP JSON-RPC endpoint (tools/list, tools/call) |
+| `GET` | `/x402/balance` | User wallet balance and pricing |
+| `POST` | `/x402/credits` | Add credits (admin) |
+| `GET` | `/admin/wallets` | All wallets overview (admin) |
+| `GET` | `/admin/transactions` | Transaction history (admin) |
 
 ## Architecture
 
