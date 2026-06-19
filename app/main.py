@@ -9,7 +9,7 @@ from app.config import settings
 from mcp_server.server import list_tools, call_tool
 from middleware.auth import authenticate_request
 from middleware.rate_limit import check_rate_limit
-from payments.x402 import get_tool_price, deduct_balance, get_balance, get_pricing_with_balance, add_credits, get_transactions, get_all_balances
+from payments.x402 import get_tool_price, deduct_balance, get_balance, get_pricing_with_balance, add_credits, get_transactions, get_all_balances, ensure_user
 from storage.models import init_db
 
 logging.basicConfig(
@@ -106,6 +106,7 @@ async def mcp_endpoint(
             )
 
         price = get_tool_price(name)
+        ensure_user(user_id)
 
         if not deduct_balance(user_id, price, tool=name):
             if settings.x402_enabled:

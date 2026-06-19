@@ -67,11 +67,22 @@ def get_balance(user_id: str) -> float:
         return round(_balances[user_id], 4)
 
 
+def ensure_user(user_id: str):
+    _load()
+    with _lock:
+        if user_id not in _balances:
+            _balances[user_id] = INITIAL_CREDITS
+            _save()
+
+
 def deduct_balance(user_id: str, amount: float, tool: str = "") -> bool:
     _load()
     with _lock:
-        bal = _balances.get(user_id, INITIAL_CREDITS)
+        if user_id not in _balances:
+            _balances[user_id] = INITIAL_CREDITS
+        bal = _balances[user_id]
         if bal < amount:
+            _save()
             return False
         _balances[user_id] = round(bal - amount, 4)
         _transactions.append({
