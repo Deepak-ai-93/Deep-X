@@ -237,11 +237,28 @@ Use these prompts with any MCP client (Claude Code, Cursor, Continue, etc.):
 ### Content Repurpose
 > Take this blog post and repurpose it into a LinkedIn post and X thread: **{paste content}**
 
+## x402 Payment System
+
+Every user starts with **$1.00 free credits**. Each tool call deducts from your balance.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /x402/balance` | Check your balance, pricing, and initial credits |
+| `POST /x402/credits?amount=0.5` | Add credits to your balance |
+
+Tool calls include response headers:
+- `X-x402-Cost` — amount deducted
+- `X-x402-Balance` — remaining balance
+
+When `X402_ENABLED=true` and balance is insufficient, the server returns **HTTP 402 Payment Required**.
+
 ## API
 
 - `GET /health` - Health check
 - `GET /pricing` - Tool pricing
-- `POST /mcp` - MCP endpoint (tools/list, tools/call, prompts/list)
+- `POST /mcp` - MCP endpoint (tools/list, tools/call)
+- `GET /x402/balance` - Balance and pricing
+- `POST /x402/credits` - Add credits
 
 ## Architecture
 
@@ -262,6 +279,7 @@ LLM Client → MCP Server → Content Generator
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `DATABASE_URL` | Database connection string |
 | `X402_SECRET` | x402 payment secret |
+| `X402_ENABLED` | Enable 402 enforcement (default: false) |
 | `LOG_LEVEL` | Logging level (default: INFO) |
 
 ## Deployment

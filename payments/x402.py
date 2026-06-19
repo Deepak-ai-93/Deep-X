@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 import logging
 from typing import Optional
 from app.config import settings
@@ -14,9 +15,32 @@ PRICING: dict[str, float] = {
     "generate_content_pack": 0.03,
 }
 
+INITIAL_CREDITS: float = 1.00
+
+_balances: dict[str, float] = {}
+
 
 def get_tool_price(tool_name: str) -> float:
     return PRICING.get(tool_name, 0.01)
+
+
+def get_balance(user_id: str) -> float:
+    if user_id not in _balances:
+        _balances[user_id] = INITIAL_CREDITS
+    return round(_balances[user_id], 4)
+
+
+def deduct_balance(user_id: str, amount: float) -> bool:
+    bal = get_balance(user_id)
+    if bal < amount:
+        return False
+    _balances[user_id] = round(bal - amount, 4)
+    return True
+
+
+def add_credits(user_id: str, amount: float):
+    bal = get_balance(user_id)
+    _balances[user_id] = round(bal + amount, 4)
 
 
 def verify_x402_token(token: str, expected_amount: float) -> bool:
@@ -34,7 +58,6 @@ def verify_x402_token(token: str, expected_amount: float) -> bool:
         ).hexdigest()[:16]
         if not hmac.compare_digest(sig, expected_sig):
             return False
-        import json
         data = json.loads(payload)
         return data.get("amount") == expected_amount
     except Exception:
@@ -44,7 +67,6 @@ def verify_x402_token(token: str, expected_amount: float) -> bool:
 def create_x402_token(amount: float) -> Optional[str]:
     if not settings.x402_secret:
         return None
-    import json
     payload = json.dumps({"amount": amount, "version": 1})
     sig = hmac.new(
         settings.x402_secret.encode(),
@@ -52,3 +74,12 @@ def create_x402_token(amount: float) -> Optional[str]:
         hashlib.sha256,
     ).hexdigest()[:16]
     return f"{payload}:{sig}"
+
+
+def get_pricing_with_balance(user_id: str) -> dict:
+    bal = get_balance(user_id)
+    return {
+        "balance": bal,
+        "pricing": PRICING,
+        "initial_credits": INITIAL_CREDITS,
+    }

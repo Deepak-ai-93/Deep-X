@@ -2,14 +2,14 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Header
 from fastapi.responses import JSONResponse
 
 from app.config import settings
 from mcp_server.server import list_tools, call_tool
 from middleware.auth import authenticate_request
 from middleware.rate_limit import check_rate_limit
-from payments.x402 import get_tool_price
+from payments.x402 import get_tool_price, deduct_balance, get_balance, get_pricing_with_balance, add_credits
 from storage.models import init_db
 
 logging.basicConfig(
@@ -65,7 +65,7 @@ async def health():
 
 
 @app.post("/mcp")
-async def mcp_endpoint(request: Request):
+async def mcp_endpoint(request: Request, x_x402_token: str = Header(None, alias="X-x402-Token")):
     try:
         body = await request.json()
     except Exception:
@@ -86,23 +86,44 @@ async def mcp_endpoint(request: Request):
     if method == "tools/call":
         name = params.get("name")
         arguments = params.get("arguments", {})
+        user_id = request.client.host if request.client else "anonymous"
 
-        try:
-            user_id = await authenticate_request(request)
-        except Exception:
-            rate_ok, retry = check_rate_limit(request.client.host if request.client else "unknown")
-            if not rate_ok:
+        rate_ok, retry = check_rate_limit(user_id)
+        if not rate_ok:
+            return JSONResponse(
+                status_code=429,
+                content={"error": "Rate limit exceeded", "retry_after": retry},
+            )
+
+        price = get_tool_price(name)
+
+        if not deduct_balance(user_id, price):
+            if settings.x402_enabled:
                 return JSONResponse(
-                    status_code=429,
-                    content={"error": "Rate limit exceeded", "retry_after": retry},
+                    status_code=402,
+                    content={
+                        "error": "Insufficient x402 credits",
+                        "balance": get_balance(user_id),
+                        "required": price,
+                        "tool": name,
+                    },
                 )
 
         result = await call_tool(name, arguments)
-        return {
+
+        resp = {
             "jsonrpc": "2.0",
             "id": req_id,
             "result": result.model_dump(),
         }
+
+        return JSONResponse(
+            content=resp,
+            headers={
+                "X-x402-Cost": str(price),
+                "X-x402-Balance": str(get_balance(user_id)),
+            },
+        )
 
     return JSONResponse(status_code=400, content={"error": f"Unknown method: {method}"})
 
@@ -111,6 +132,19 @@ async def mcp_endpoint(request: Request):
 async def pricing():
     from payments.x402 import PRICING
     return PRICING
+
+
+@app.get("/x402/balance")
+async def x402_balance(request: Request):
+    user_id = request.client.host if request.client else "anonymous"
+    return get_pricing_with_balance(user_id)
+
+
+@app.post("/x402/credits")
+async def x402_add_credits(request: Request, amount: float = 0.1):
+    user_id = request.client.host if request.client else "anonymous"
+    add_credits(user_id, amount)
+    return {"balance": get_balance(user_id), "added": amount}
 
 
 if __name__ == "__main__":
