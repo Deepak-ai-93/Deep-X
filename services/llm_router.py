@@ -2,9 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Optional
 import logging
 
-from openai import AsyncOpenAI
-from anthropic import AsyncAnthropic
-
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -16,9 +13,19 @@ class LLMProvider(ABC):
         ...
 
 
+class NoopProvider(LLMProvider):
+    async def generate(self, prompt: str, model: Optional[str] = None) -> str:
+        logger.warning("No AI provider configured. Returning empty response.")
+        return ""
+
+
 class OpenAIProvider(LLMProvider):
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        from openai import AsyncOpenAI
+        from app.config import settings as s
+        if not s.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY not set")
+        self.client = AsyncOpenAI(api_key=s.openai_api_key)
 
     async def generate(self, prompt: str, model: Optional[str] = None) -> str:
         resp = await self.client.chat.completions.create(
@@ -32,7 +39,11 @@ class OpenAIProvider(LLMProvider):
 
 class AnthropicProvider(LLMProvider):
     def __init__(self):
-        self.client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+        from anthropic import AsyncAnthropic
+        from app.config import settings as s
+        if not s.anthropic_api_key:
+            raise RuntimeError("ANTHROPIC_API_KEY not set")
+        self.client = AsyncAnthropic(api_key=s.anthropic_api_key)
 
     async def generate(self, prompt: str, model: Optional[str] = None) -> str:
         resp = await self.client.messages.create(
@@ -45,9 +56,13 @@ class AnthropicProvider(LLMProvider):
 
 class OpenRouterProvider(LLMProvider):
     def __init__(self):
+        from openai import AsyncOpenAI
+        from app.config import settings as s
+        if not s.openrouter_api_key:
+            raise RuntimeError("OPENROUTER_API_KEY not set")
         self.client = AsyncOpenAI(
-            api_key=settings.openrouter_api_key,
-            base_url=settings.openrouter_base_url,
+            api_key=s.openrouter_api_key,
+            base_url=s.openrouter_base_url,
         )
 
     async def generate(self, prompt: str, model: Optional[str] = None) -> str:
@@ -67,6 +82,8 @@ def get_provider(name: Optional[str] = None) -> LLMProvider:
     name = name or settings.default_provider
     if name not in _providers:
         match name:
+            case "noop":
+                _providers[name] = NoopProvider()
             case "openai":
                 _providers[name] = OpenAIProvider()
             case "anthropic":

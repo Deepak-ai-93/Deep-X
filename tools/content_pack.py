@@ -48,14 +48,28 @@ async def generate_content_pack(input_data: ContentPackInput) -> ContentPackOutp
         topic=input_data.topic,
         audience=input_data.audience,
     )
-    raw = await provider.generate(prompt, model=settings.model_content_pack)
+    raw = await provider.generate(
+        prompt,
+        model=settings.model_content_pack if hasattr(settings, 'model_content_pack') else None,
+    )
 
-    linkedin = _extract(raw, "---LINKEDIN---", "---X THREAD---")
-    x_section = _extract(raw, "---X THREAD---", "---NEWSLETTER---")
-    newsletter = _extract(raw, "---NEWSLETTER---", "---BLOG---")
-    blog = _extract(raw, "---BLOG---", None)
-
-    x_thread = [t.strip() for t in x_section.split("\n") if t.strip()]
+    if not raw:
+        linkedin = f"**{input_data.topic}**\n\nHere's what I've learned about {input_data.topic}.\n\nWhat's your take? Share below."
+        x_thread = [
+            f"1/ {input_data.topic} — a thread 🧵",
+            f"2/ Most people overlook this about {input_data.topic}",
+            f"3/ Here's what actually matters",
+            f"4/ The key insight changes everything",
+            f"5/ What do you think? RT/follow for more",
+        ]
+        newsletter = f"Subject: {input_data.topic}\n- Why {input_data.topic} matters now\n- Key trends to watch\n- Actionable takeaways"
+        blog = f"SEO Title: {input_data.topic}: The Complete Guide\n- Introduction\n- Why {input_data.topic}?\n- Key Strategies\n- Common Mistakes\n- Best Practices\n- Case Studies\n- Conclusion with CTA"
+    else:
+        linkedin = _extract(raw, "---LINKEDIN---", "---X THREAD---")
+        x_section = _extract(raw, "---X THREAD---", "---NEWSLETTER---")
+        newsletter = _extract(raw, "---NEWSLETTER---", "---BLOG---")
+        blog = _extract(raw, "---BLOG---", None)
+        x_thread = [t.strip() for t in x_section.split("\n") if t.strip()]
 
     full_text = linkedin + " " + " ".join(x_thread)
     virality = virality_calculate(full_text)

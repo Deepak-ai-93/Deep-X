@@ -35,20 +35,56 @@ async def analyze_content(input_data: AnalyzeInput) -> AnalyzeOutput:
     provider = get_provider()
     raw = await provider.generate(
         ANALYSIS_PROMPT.format(content=input_data.content),
-        model=settings.model_analysis,
+        model=settings.model_analysis if hasattr(settings, 'model_analysis') else None,
     )
 
     virality = virality_calculate(input_data.content)
+
+    if not raw:
+        return AnalyzeOutput(
+            clarity=round(virality["readability"], 1),
+            virality=virality["overall"],
+            engagement=float(virality["overall"]),
+            weaknesses=_default_weaknesses(input_data.content),
+            suggestions=_default_suggestions(input_data.content),
+        )
+
     import json
     try:
-        parsed = json.loads(raw.strip().removeprefix("```json").removesuffix("```").strip())
+        cleaned = raw.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        parsed = json.loads(cleaned.strip())
     except (json.JSONDecodeError, ValueError):
         parsed = {}
 
     return AnalyzeOutput(
-        clarity=float(parsed.get("clarity", 70)),
+        clarity=float(parsed.get("clarity", virality["readability"])),
         virality=virality["overall"],
-        engagement=float(parsed.get("engagement", 70)),
-        weaknesses=parsed.get("weaknesses", []),
-        suggestions=parsed.get("suggestions", []),
+        engagement=float(parsed.get("engagement", virality["overall"])),
+        weaknesses=parsed.get("weaknesses", _default_weaknesses(input_data.content)),
+        suggestions=parsed.get("suggestions", _default_suggestions(input_data.content)),
     )
+
+
+def _default_weaknesses(content: str) -> list[str]:
+    w = []
+    words = len(content.split())
+    if words > 200:
+        w.append("Content is too long for social media")
+    if words < 20:
+        w.append("Content is too short to convey value")
+    if "?" not in content:
+        w.append("No questions to drive engagement")
+    return w or ["Consider adding a stronger hook"]
+
+
+def _default_suggestions(content: str) -> list[str]:
+    return [
+        "Add a compelling hook in the first line",
+        "Include a clear call-to-action",
+        "Break into shorter paragraphs for readability",
+        "Add emotional triggers or storytelling elements",
+    ]

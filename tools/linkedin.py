@@ -52,16 +52,20 @@ async def generate_linkedin_post(input_data: LinkedInInput) -> LinkedInOutput:
         audience=input_data.audience,
         tone=input_data.tone,
     )
-    raw = await provider.generate(prompt, model=settings.model_linkedin)
+    raw = await provider.generate(prompt, model=settings.model_linkedin if hasattr(settings, 'model_linkedin') else None)
 
-    hook = _extract_section(raw, "---HOOK---", "---POST---")
-    post = _extract_section(raw, "---POST---", "---CTA---")
-    cta = _extract_section(raw, "---CTA---", None)
-
-    if not post:
-        post = raw
-        hook = post.split("\n")[0] if post else ""
-        cta = ""
+    if not raw:
+        post = f"**{input_data.topic}**\n\nShare your thoughts on {input_data.topic} in the comments below."
+        hook = f"How to master {input_data.topic}"
+        cta = "What do you think? Share in the comments."
+    else:
+        hook = _extract_section(raw, "---HOOK---", "---POST---")
+        post = _extract_section(raw, "---POST---", "---CTA---")
+        cta = _extract_section(raw, "---CTA---", None)
+        if not post:
+            post = raw
+            hook = post.split("\n")[0] if post else ""
+            cta = ""
 
     virality = virality_calculate(post)
 
