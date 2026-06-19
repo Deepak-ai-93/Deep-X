@@ -19,6 +19,28 @@ uvicorn app.main:app --host 0.0.0.0 --port 10000
 
 No API keys, no .env file needed. The server works out of the box.
 
+> **No install?** Use the hosted instance: `https://viral-content-mcp.onrender.com/mcp`
+
+## Hosted Instance
+
+A public instance is available at:
+
+```
+https://viral-content-mcp.onrender.com/mcp
+```
+
+Connect any MCP client directly — no installation needed. Example config:
+
+```json
+{
+  "mcpServers": {
+    "viral-content": {
+      "url": "https://viral-content-mcp.onrender.com/mcp"
+    }
+  }
+}
+```
+
 ## Connecting MCP Clients
 
 ### Claude Code (Claude CLI)
@@ -36,13 +58,13 @@ Add to your `~/.claude.json` or `claude.json`:
 }
 ```
 
-Or connect to a remote instance:
+Or connect to the hosted instance:
 
 ```json
 {
   "mcpServers": {
     "viral-content": {
-      "url": "https://your-app.onrender.com/mcp"
+      "url": "https://viral-content-mcp.onrender.com/mcp"
     }
   }
 }
@@ -63,7 +85,7 @@ Add to your Gemini CLI config:
     "servers": [
       {
         "name": "viral-content",
-        "url": "http://127.0.0.1:10000/mcp"
+        "url": "https://viral-content-mcp.onrender.com/mcp"
       }
     ]
   }
@@ -139,10 +161,10 @@ Any MCP-compatible client can connect via stdio:
 }
 ```
 
-Or via HTTP (if deployed):
+Or via HTTP (hosted instance):
 
 ```
-URL: https://your-app.onrender.com/mcp
+URL: https://viral-content-mcp.onrender.com/mcp
 ```
 
 ## MCP Tools
