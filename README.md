@@ -29,6 +29,66 @@ uvicorn app.main:app --host 0.0.0.0 --port 10000
 | `improve_content` | Improve content | $0.005 |
 | `generate_content_pack` | Multi-platform pack | $0.03 |
 
+## Tool Schemas
+
+### `generate_linkedin_post`
+```json
+{
+  "topic": "AI agents for SaaS",
+  "audience": "SaaS founders",
+  "tone": "professional"
+}
+```
+Returns: `post`, `hook`, `cta`, `virality_score`, `readability_score`, `analysis`
+
+### `generate_x_content`
+```json
+{
+  "topic": "MCP servers",
+  "include_thread": true
+}
+```
+Returns: `tweet`, `thread`, `engagement_score`, `analysis`
+
+### `analyze_content`
+```json
+{
+  "content": "Your post text here..."
+}
+```
+Returns: `clarity`, `virality`, `engagement`, `weaknesses`, `suggestions`
+
+### `generate_content_pack`
+```json
+{
+  "topic": "Remote work productivity",
+  "audience": "tech leaders"
+}
+```
+Returns: `linkedin_post`, `x_thread`, `newsletter_outline`, `blog_outline`, `virality_score`, `analysis`
+
+## Default Prompts
+
+Use these prompts with any MCP client (Claude Code, Cursor, Continue, etc.):
+
+### LinkedIn Post
+> Create a LinkedIn post about **{topic}** for **{audience}** in a **{tone}** tone.
+
+### X/Twitter Thread
+> Write an X thread about **{topic}** that drives engagement.
+
+### Content Analysis
+> Analyze this content and tell me how to improve it: **{paste content}**
+
+### Multi-Platform Content Pack
+> Generate a full content pack for **{topic}** including LinkedIn, X thread, newsletter outline, and blog outline.
+
+### Virality Check
+> Score this post for virality and tell me what to improve: **{paste post}**
+
+### Content Repurpose
+> Take this blog post and repurpose it into a LinkedIn post and X thread: **{paste content}**
+
 ## API
 
 - `GET /health` - Health check
